@@ -84,3 +84,13 @@
 )
 
 ;; PI (+ 3 ( cont-frac ( lambda ( i ) (square (+ 1 (* 2 i)))) ( lambda ( i ) 6.0) 100 ))
+
+(define (atan-cf x k)
+  (define (at-nom n)
+    {if (= n 0)
+        x
+        (square (* n x))
+     })
+  (define (at-den n) {+ 1 (* 2 n)})
+  {cont-frac at-nom at-den k}
+)
