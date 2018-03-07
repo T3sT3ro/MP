@@ -77,6 +77,14 @@
 )
 ;;=====
 
+;; Z3
+
+(define (make-vecpolar P angle length)
+        {list P (asin (sin angle)) length}
+)
+
+
+
 ;; Z4
 
 (define (reverse L)
@@ -86,4 +94,18 @@
                     (build (cdr list) (cons (car list) reversed))}
         )
         {build L null}
+)
+
+(define (r-reverse L)
+        {if [null? L]
+            null
+            (append (r-reverse (cdr L))
+                    (list (car L)))
+        }
+)
+
+;; Z5
+
+#;(define (insert x L)
+        {append ()}
 )
