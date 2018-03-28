@@ -8,6 +8,11 @@
        (= (length t) 3)
        (member (car t) '(+ - * /))))
 
+(define (oplist? t)
+  (and (list? t)
+       (>= (length t) 1)
+       (member (car t) '(+ - * /))))
+
 (define (binop-op e)  (car e))
 (define (binop-left e)  (cadr e))
 (define (binop-right e)  (caddr e))
@@ -71,7 +76,9 @@
       (and (if-zero? t)
            (arith/let-expr? (if-zero-cond t))
            (arith/let-expr? (if-zero-true t))
-           (arith/let-expr? (if-zero-false t)))))
+           (arith/let-expr? (if-zero-false t)))
+      (and (oplist? t)
+           (apply arith/let-expr? (cdr t)))))
 
 ;; if-zero
 (define (if-zero-cons cond true false) (list 'if-zero cond true false))
@@ -112,7 +119,9 @@
          (if-zero-cons
           (subst (if-zero-cond e))
           (subst (if-zero-true e))
-          (subst (if-zero-false e)))]))
+          (subst (if-zero-false e)))]
+        [(oplist? e)
+          (apply subst (cdr ))]))
 
 (define (eval-subst e)
   (cond [(const? e) e]
@@ -131,7 +140,10 @@
         [(if-zero? e)
          (if [= (eval-subst (if-zero-cond e)) 0]
              (eval-subst (if-zero-true e))
-             (eval-subst (if-zero-false e)))]))
+             (eval-subst (if-zero-false e)))]
+        [(oplist? e)
+         ((op->proc (car e))
+          (apply eval-subst (cdr e)))]))
 
 ;; evaluation via environments
 
@@ -160,7 +172,9 @@
         [(if-zero? e)
          (if [= (eval-env (if-zero-cond e) env) 0]
              (eval-env (if-zero-true e) env)
-             (eval-env (if-zero-false e) env))]))
+             (eval-env (if-zero-false e) env))]
+        [(oplist? e)
+         (apply (op->proc (car e)) (map (lambda (x) (eval-env x env)) (cdr e)))]))
 
 (define (env-for-let def env)
   (add-to-env
@@ -205,9 +219,6 @@
                                (car (pop (cdr (pop stack))))
                                (car (pop stack))) (cdr (pop ( cdr (pop stack))))))]))
   (car (f rpn '(stack))))
-
-
-
 
 
 
