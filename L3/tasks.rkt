@@ -87,7 +87,7 @@
 
 ;; Z4
 
-(define (reverse L)
+(define (i-reverse L)
         (define (build list reversed)
                 {if [null? list]
                     reversed
@@ -106,6 +106,10 @@
 
 ;; Z5
 
-#;(define (insert x L)
-        {append ()}
+(define (insert x L)
+        {cond
+          [(null? (cdr L)) (cons x null)]
+          [(<= x (car L)) (cons x L)]
+          [else (cons (car L) (insert x (cdr L)))]
+        }
 )

@@ -1,0 +1,96 @@
+#lang racket
+(define (var? t)
+  (symbol? t))
+
+(define (neg? t)
+  (and (list? t)
+   (= 2 (length t))
+   (eq? 'neg (car t))))
+
+(define (conj? t)
+  (and (list? t)
+       (= 3 (length t))
+       (eq? 'conj (car t))))
+
+(define (disj? t)
+  (and (list? t)
+   (= 3 (length t))
+   (eq? 'disj (car t))))
+
+(define (prop? f)
+  (or (var? f)
+      (and (neg? f)
+           (prop? (neg-subf f)))
+      (and (disj? f)
+           (prop? (disj-left f))
+           (prop? (disj-rght f)))
+      (and (conj? f)
+           (prop? (conj-left f))
+           (prop? (conj-rght f)))))
+
+(define (neg arg)
+  (list 'neg arg))
+
+(define (conj arg1 arg2)
+  (list 'conj arg1 arg2))
+
+(define (disj arg1 arg2)
+  (list 'disj arg1 arg2))
+
+(define (neg-subf f) (cadr f))
+(define (conj-left f) (cadr f))
+(define (conj-rght f) (caddr f))
+(define (disj-left f) (cadr f))
+(define (disj-rght f) (caddr f))
+
+(define (free-vars f)
+  (define (loop f)
+    (cond [(var? f) (list f)]
+          [(neg? f) (loop (neg-subf f))]
+          [(disj? f) (append (loop (disj-left f)) (loop (disj-rght f)))]
+          [(conj? f) (append (loop (conj-left f)) (loop (conj-rght f)))]))
+  (if[not (prop? f)]
+    (error "Wrong formula.")
+    (remove-duplicates (loop f))))
+
+(define  (gen-vals  xs)
+  (if  [null? xs]
+   (list  null)
+   (let* ([vss   (gen-vals (cdr xs))]
+         [x     (car xs)]
+         [vst   (map (lambda (vs) (cons (list x true)   vs)) vss)]
+         [vsf   (map (lambda (vs) (cons (list x false) vs)) vss)])
+         (append  vst  vsf))))
+
+(define (eval-formula xs vals)
+  (define (val? x v)
+    (if [null? v]
+        (error "No such variable in formula")
+        (if (eq? (caar v) x)
+            (cadar v)
+            (val? x (cdr v)))))
+  (cond [(var? xs) (val? xs vals)]
+        [(neg? xs) (not (eval-formula (neg-subf xs) vals))]
+        [(disj? xs) (or (eval-formula (disj-left xs) vals) (eval-formula (disj-rght xs) vals))]
+        [(conj? xs) (and (eval-formula (conj-left xs) vals) (eval-formula (disj-rght xs) vals))]
+        [else (if [prop? xs]
+                  (error "Other error???")
+                  (error "Not a proper formula."))]))
+
+(define (falsifiable-eval? xs)
+  (define (iter vals)
+    (if [null? vals]
+        #f
+        (if [eval-formula xs (car vals)]
+            (iter (cdr vals))
+            (car vals))))
+    (let [(vals (gen-vals (free-vars xs)))]
+      (iter vals)))
+
+
+(define (cnf? form)
+  (define (conlist? xs)
+    (or (var? xs)
+        (and (conj? xs)
+             (disj? (ca))))))
+  (define (disjlist? xs)))

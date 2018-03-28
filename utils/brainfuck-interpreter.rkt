@@ -76,7 +76,7 @@
               [else (let* ([nxt (nextstate state op)]
                            [opshift (cdr nxt)]
                            [nxtst (car nxt)])
-                      (if verbose (printf "PENDING:~a" (opchar op)) null)
+                      (if verbose (printf "[~a] \tNEXT:~a\t" opptr (opchar op)) null)
                       (if verbose (printstate state) null)
                       (brainfuck-run prog nxtst (+ opptr opshift) verbose))]))))
 
