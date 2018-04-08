@@ -360,13 +360,6 @@
                        (clause (literal #t p))
                        (clause (literal #f s))))
 
-(display "test unsat #2: \n")
-(prove-and-check '(cnf (clause (literal #f p) (literal #t q))
-                       (clause (literal #f p) (literal #f r) (literal #t s))
-                       (clause (literal #f q) (literal #t r))
-                       (clause (literal #t p))
-                       (clause (literal #f s))))
-
 (display "test sat #1: 'a|~c & b|~c' ")
 (prove-and-check '(cnf (clause (literal #t a) (literal #f c)) (clause (literal #t b) (literal #f c))))
 
