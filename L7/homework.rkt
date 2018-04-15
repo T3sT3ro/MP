@@ -76,7 +76,7 @@
   (cons (list x v) env))
 
 (define (find-in-env x env)
-  (cond [(null? env) (error "undefined variable" x)]
+  (cond [(null? env) x] ;; unbound variable
         [(eq? x (caar env)) (cadar env)]
         [else (find-in-env x (cdr env))]))
 
