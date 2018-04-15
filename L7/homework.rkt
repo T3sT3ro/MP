@@ -80,8 +80,7 @@
         [(eq? x (caar env)) (cadar env)]
         [else (find-in-env x (cdr env))]))
 
-;; evaluator
-
+;; evaluator from lecture 
 (define (eval-env e env)
   (cond [(const? e) e]
         [(op? e)
@@ -169,6 +168,7 @@
 
 ;; test calculation
 
+;; expression is tested with 'eval' procedure so it cannot have unbound variables
 (define (test-expr e)
   (if (let* ([lifted (let-lift e)])
         (and (let-lifted-expr? lifted)
