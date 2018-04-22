@@ -207,6 +207,17 @@
 (define (null?-cons e)
   (list 'null? e))
 
+(define (my-list? t)
+  (tagged-list? 'list t))
+
+(define (list->cons e)
+  (define (f xs)
+    (if [null? xs]
+        'null
+        (cons-cons (car xs) (f (cdr xs)))))
+  (f (cdr e)))
+
+
 ;; lambdas
 
 (define (lambda? t)
@@ -381,6 +392,7 @@
                    (env-for-let (let-def e) env))]
         [(my-null? e)
          null]
+        [(my-list? e) (eval-env (list->cons e) env)]
         [(cons? e)
          (cons (eval-env (cons-fst e) env)
                (eval-env (cons-snd e) env))]
@@ -476,29 +488,29 @@ proszę tak zrobić.
 |#
 
 
-;; Added to language: "and", "or", "not", "number?" 
+;; Added to language: "and", "or", "not", "number?"
 ;; Returns arithmetic expression evaluator in our language
 (define lang-arith-evaluator
   '{let (lang-arith-number? (lambda (x) (number? x))) ;; OK
-     (let (lang-arith-op-proc (lambda (x) (cond [(eq? x (quote +))
-                                                 (lambda (a b) (+ a b))]
-                                                [(eq? x (quote -))
-                                                 (lambda (a b) (- a b))]
-                                                [(eq? x (quote *))
-                                                 (lambda (a b) (* a b))]
-                                                [(eq? x (quote /))
-                                                 (lambda (a b) (+ a b))])))
+     (let (lang-arith-op-proc (lambda (x) (cond [(eq? x '+) (lambda (a b) (+ a b))]
+                                                [(eq? x '-) (lambda (a b) (- a b))]
+                                                [(eq? x '*) (lambda (a b) (* a b))]
+                                                [(eq? x '/) (lambda (a b) (+ a b))])))
        (lambda-rec (arith-eval e)
                    (if (lang-arith-number? e)
                        e
                        ((lang-arith-op-proc (car e)) (arith-eval (car (cdr e)))
-                                                     (arith-eval (cdr (cdr e)))))))})
+                                                     (arith-eval (car (cdr (cdr e))))))))})
 
 
 
 
-
-
-
+(define (test)
+  (define (case t) (eval (app-cons lang-arith-evaluator (list t))))
+  (display "tests: ")
+  (and (=  97 (case '(list '+ 7 (list '* 9 10))))
+       (= 7 (case '7))
+       (= 108 (case '(list '* 9 (list '+ 2 (list '- 13 3)))))
+       (= 0 (case '(list '- 1 (list '- 1 (list '- 1 1)))))))
 
 
