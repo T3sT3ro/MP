@@ -104,6 +104,20 @@
 (define (let-cons def e)
   (list 'let def e))
 
+;; ADDED: lazy-lets
+
+(define lazy-let-def? let-def?)
+(define lazy-let-def-var let-def-var)
+(define lazy-let-def-expr let-def-expr)
+(define lazy-let-def-cons let-def-cons)
+(define (lazy-let? t)
+  (and (tagged-tuple? 'lazy-let 3 t)
+       (lazy-let-def? (cadr t))))
+(define lazy-let-def let-def)
+(define lazy-let-expr let-expr)
+(define lazy-let-cons let-cons)
+
+
 ;; variables
 
 (define (var? t)
@@ -271,17 +285,20 @@
 
 ;; expressions
 
-(define (expr? t)
+(define (expr? t) ;; procedure useless - everything evaluates true as "app?"
   (or (const? t)
-      (and (and? t)
+      (and (and? t) ;; ADDED
            (andmap expr? (and-args t)))
-      (and (or? t)
+      (and (or? t) ;; ADDED
            (andmap expr? (or-args t)))
-      (and (op? t)
+      (and (op? t) ;; ADDED
            (andmap expr? (op-args t)))
       (and (let? t)
            (expr? (let-expr t))
            (expr? (let-def-expr (let-def t))))
+      (and (lazy-let? t) ;; ADDED
+           (expr? (lazy-let-expr t))
+           (expr? (lazy-let-def-expr (lazy-let-def t))))
       (and (cons? t)
            (expr? (cons-fst t))
            (expr? (cons-snd t)))
@@ -314,8 +331,7 @@
 
 ;; environments
 
-(define empty-env
-  null)
+(define empty-env  null)
 
 (define (add-to-env x v env)
   (cons (list x v) env))
@@ -390,9 +406,13 @@
         [(let? e)
          (eval-env (let-expr e)
                    (env-for-let (let-def e) env))]
+        [(lazy-let? e) ;; ADDED
+         (eval-env (lazy-let-expr e)
+                   (env-for-lazy-let (lazy-let-def e) env))]
         [(my-null? e)
          null]
-        [(my-list? e) (eval-env (list->cons e) env)]
+        [(my-list? e) ;; ADDED: "list" as cons syntactic sugar
+         (eval-env (list->cons e) env)]
         [(cons? e)
          (cons (eval-env (cons-fst e) env)
                (eval-env (cons-snd e) env))]
@@ -411,7 +431,7 @@
         [(cond? e)
          (eval-cond-clauses (cond-clauses e) env)]
         [(var? e)
-         (find-in-env (var-var e) env)]
+         ((find-in-env (var-var e) env))] ;; trigger nullary lambda
         [(lambda? e)
          (closure-cons (lambda-vars e) (lambda-expr e) env)]
         [(lambda-rec? e)
@@ -447,7 +467,7 @@
            (closure-rec-expr c)
            (add-to-env
             (closure-rec-name c)
-            c
+            (lambda () c) ;; EDITED
             (env-for-closure
               (closure-rec-vars c)
               args
@@ -458,35 +478,25 @@
         [(and (not (null? xs)) (not (null? vs)))
          (add-to-env
            (car xs)
-           (car vs)
+           (lambda () (car vs)) ;; EDITED
            (env-for-closure (cdr xs) (cdr vs) env))]
         [else (error "arity mismatch")]))
 
-(define (env-for-let def env)
+(define (env-for-let def env) ;; EDITED
   (add-to-env
-    (let-def-var def)
-    (eval-env (let-def-expr def) env)
-    env))
+   (let-def-var def)
+   (let ([value (eval-env (let-def-expr def) env)])
+     (lambda () value)) ;; first calculate, then add lambda returning value
+   env))
+
+(define (env-for-lazy-let def env) ;; ADDED: lazy-let late binding
+  (add-to-env
+   (lazy-let-def-var def)
+   (lambda () (eval-env (lazy-let-def-expr def) env)) ;; leave evaluation until lambda execution
+   env))
 
 (define (eval e)
   (eval-env e empty-env))
-
-#|
-Zadanie A to napisanie ewaluatora wyrażeń arytmetycznych w interpretowanym
-języku z wykładu. Składnia abstrakcyjna tych wyrażeń powinna być dana 
-analogicznie do składni abstrakcyjnej wyrażeń arytmetycznych, które ewalu-
-owaliśmy w Rackecie: stałe jako liczby, a operatory binarne jako trzyelementowe
-listy zawierające symbol reprezentujący operację i dwa podwyrazenia.
-Uwaga: Napisanie ewalatora nie powinno by trudne, w końcu widzieliśmy
-podobny kawałek kodu (ale w innym języku) na wykładzie. Trudnością w tym
-zadaniu jest zorientowanie się, co jest bytem w którym języku.
-Kolejna uwaga: Nasz język jest nadal dość ubogi. Jeśli będzie wygodniej
-najpierw rozbudowa go o jakąś formę, która sprawi, że będzie łatwiej napisać 
-ewaluator (albo łatwiej konstruować wyrazenia arytmetyczne w celu testowania), 
-proszę tak zrobić.
-
-|#
-
 
 ;; Added to language: "and", "or", "not", "number?"
 ;; Returns arithmetic expression evaluator in our language
@@ -505,12 +515,28 @@ proszę tak zrobić.
 
 
 
-(define (test)
+(define (test-arith)
   (define (case t) (eval (app-cons lang-arith-evaluator (list t))))
   (display "tests: ")
   (and (=  97 (case '(list '+ 7 (list '* 9 10))))
        (= 7 (case '7))
+       (= 12 (case '(list '- (list '* 2 8) (list '+ 2 2))))
        (= 108 (case '(list '* 9 (list '+ 2 (list '- 13 3)))))
        (= 0 (case '(list '- 1 (list '- 1 (list '- 1 1)))))))
 
 
+(define (test-lazy)
+  (display "tests: ")
+  (and (= 3628800 (eval '((lambda-rec (fact n)
+                                      (lazy-let [t 1]
+                                                (lazy-let [f (* n (fact (- n 1)))]
+                                                          (if (= n 0) t f))))
+                          10)))
+       (= 5 (eval '(let [x 4]
+                     (lazy-let [y (+ x 1)]
+                               (let [x 10]
+                                 y)))))
+       (= 10 (eval '(lazy-let [x (no matter what is in here, it will not evaluate)]
+                   (+ 3 7))))
+       (= 5 (eval '(let (x 3) (lazy-let (x 4) (let (x 5) x)))))
+       (= 12 (eval '(lazy-let (x 3) (lazy-let (x (let (x (* 2 x)) (+ x x))) x)))))) 
